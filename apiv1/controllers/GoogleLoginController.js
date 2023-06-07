@@ -76,6 +76,7 @@ module.exports = {
 
         return resp.status(200).json(account);
     },
+    
     getUserSetting : async function(req,resp){
         let uid = req.headers['x-access-token'];
         
@@ -108,6 +109,7 @@ module.exports = {
         return resp.json(setting);
 
     },
+
     updateUserSetting: async function(req,resp){
         let id = req.params.id;
         let body = req.body;
@@ -162,5 +164,94 @@ module.exports = {
         }
 
         return resp.status(200).json(googleId);
-    }
+    },
+
+    getUserCourses : async function(req,resp){
+        let uid = req.headers['x-access-token'];
+        
+        if(!uid || uid === "1"){
+            return resp.status(401).json({
+                message: "Invalid userID supplied",
+                error: "Unauthorized"
+            });
+        }
+
+        uid = await verifyGoogleToken(req.headers['x-access-token']);
+
+        if(!uid){
+            return resp.status(404).json({
+                message: "Failed to Found the supplied UserID",
+                error: "Not Found"
+            });
+        }
+
+        let course; 
+        try {
+            const user = await GoogleLoginModel.findOne({_id:uid});
+            course = user.courseSave;
+        }catch(err){
+            return resp.status(500).json({
+                message: "Error finding User Course Save",
+                error: err
+            });
+        }
+        return resp.json(course);
+
+    },
+
+    updateUserCourses: async function(req,resp){
+        let id = req.params.id;
+        let body = req.body;
+
+        if(!req.headers['x-access-token']){
+            return resp.status(400).json({
+                message: "Missing user ID",
+                error: "Bad Request"
+            });
+        }
+
+        if(Object.keys(body) === 0 || body === undefined){
+            return resp.status(400).json({
+                message: "Missing required fields",
+                error: (Object.keys(body) == 0 ? "No body provided" : "No settings provided")
+            });
+        }
+
+        let uid = await verifyGoogleToken(req.headers['x-access-token']);
+        if(!uid){
+            return resp.status(401).json({
+                message: "Invalid token recieved",
+                error: "Unauthorized"
+            });
+        }
+
+        let googleId;
+        try {
+            googleId = await GoogleLoginModel.findById(uid);
+        } catch (err) {
+            return resp.status(500).json({
+                message: "Error getting id",
+                error: err
+            });
+        }
+
+        if(!googleId){
+            return resp.status(404).json({
+                message: `Could not find googleId "${id}"`,
+                error: "Id not found"
+            });
+        }
+        
+        googleId.courseSave = body;
+        try {
+            await googleId.save(); 
+        }catch(err){
+            return resp.status(500).json({
+                message: "Error updating user courses",
+                error: err
+            });
+        }
+
+        return resp.status(200).json(googleId);
+    },
 };
