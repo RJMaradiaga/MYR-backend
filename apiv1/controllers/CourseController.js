@@ -1,4 +1,5 @@
-let CourseModel = require('../models/CourseModel.js');
+let CourseModel = require('../models/CourseModel');
+//let { LessonSaveSchema } = require('../models/courseModel');
 let verify = require('../authorization/verifyAuth.js');
 
 /**
@@ -208,6 +209,114 @@ module.exports = {
                 });
             }
         });
+    },
+    
+    /**
+     * CourseController.saveLesson()
+     */
+    saveLesson: async function(req, resp){
+        let id = req.params.id;
+        let body = req.body;
+
+        if(!req.headers['x-access-token']){
+            return resp.status(400).json({
+                message: "Missing user ID",
+                error: "Bad Request"
+            });
+        }
+
+        if(Object.keys(body) === 0 || body.settings === undefined){
+            return resp.status(400).json({
+                message: "Missing required fields",
+                error: (Object.keys(body) == 0 ? "No body provided" : "No settings provided")
+            });
+        }
+        
+        let uid = await verifyGoogleToken(req.headers['x-access-token']);
+        if(!uid){
+            return resp.status(401).json({
+                message: "Invalid token recieved",
+                error: "Unauthorized"
+            });
+        }
+        courseSave.uid = uid;
+
+        let courseSave;
+        try{
+            courseSave = await CourseSchema.findById(id);
+        }catch(err){
+            return resp.status(500).json({
+                message: "Error getting course save",
+                error: err
+            });
+        }
+        
+        if(!courseSave){
+            return resp.status(404).json({
+                message: `Could not find course save "${id}"`,
+                error: "Course save not found"
+            });
+        }
+        else if(courseSave.uid.toString() !== uid.toString()){
+            return resp.status(401).json({
+                message: `You do not own course save "${id}"`,
+                error: "Unauthorized"
+            });
+        }
+
+        if (body.createTime === undefined) {
+            courseSave.createTime = new Date();
+        }
+        courseSave.name = body.name;
+        courseSave.code = body.code;
+        courseSave.settings = body.settings;
+        courseSave.updateTime = new Date();
+
+        try{
+            await courseSave.save();
+        }catch(err){
+            return resp.status(500).json({
+                message: "Error updating course save",
+                error: err
+            });
+        }
+        return resp.json(courseSave); //No Content
+    },
+
+
+    /**
+     * CourseController.getByID()
+     */
+    getByID: async function(req, res){
+        let id = req.params.id;
+
+        let lessonSave;
+
+        try{
+            lessonSave = await LessonSaveSchema.findById(id);
+        }catch(err) {
+            //Might be a firebase ID
+            try{
+                lessonSave = await LessonSaveSchema.findOne({firebaseID: id});
+            }catch(err){
+                return res.status(500).json({
+                    message: "Error Fetching lesson save",
+                    error: err
+                });
+            }            
+        }
+        //Not found
+        if(!lessonSave){
+            return res.status(404).json({
+                message: `Could not find lesson save ${id}`,
+                error: "Lesson save not found"
+            });
+        }
+        if(lessonSave._id.toString() !== id){
+            return res.redirect(301, `${scene._id}`);
+        }
+
+        return res.status(200).json(lessonSave);
     },
 
     /**
