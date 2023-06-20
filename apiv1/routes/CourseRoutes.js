@@ -14,4 +14,8 @@ router.put('/id/:id', CourseController.update);
 
 router.delete('/id/:id', CourseController.remove);
 
+router.put('/saveLesson', CourseController.saveLesson);
+
+router.get('/saveId/:id', CourseController.getByID);
+
 module.exports = router;
