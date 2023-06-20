@@ -2,18 +2,20 @@ let mongoose = require('mongoose');
 let Schema = mongoose.Schema;
 let { Settings } = require('./SceneModel')
 
-let SaveSchema = new Schema({
+let LessonSaveSchema = new Schema({
+    'uid': mongoose.Types.ObjectId | String,
     'code': String,
+    'settings': Settings,
     'createTime': Date,
     'updateTime': Date
-}, {_id : false});
+});
 
 let LessonSchema = new Schema({
 	'name': { type: String, required: true },
 	'prompt': String,
 	'code': { type: String, required: true },
     'settings': Settings,
-    'courseSave': [SaveSchema]
+    'lessonSave': [LessonSaveSchema]
 }, {_id : false});
 
 let CourseSchema = new Schema({
