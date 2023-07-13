@@ -13,6 +13,7 @@ let CourseSchema = new Schema({
     'shortname': String,
     'name': String,
     'difficulty': Number,
+    'index': Number,
     'description': String,
     'lessons': [LessonSchema]
 });

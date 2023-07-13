@@ -123,6 +123,7 @@ module.exports = {
             shortname: req.body.shortname,
             lessons: req.body.lessons,
             difficulty: req.body.difficulty,
+            index: req.body.index,
             description: req.body.description,
             lessons: req.body.lessons
         });
@@ -192,6 +193,7 @@ module.exports = {
                     Course.shortname = req.body.shortname ? req.body.shortname : Course.shortname;
                     Course.lessons = req.body.lessons ? req.body.lessons : Course.lessons;
                     Course.difficulty = req.body.difficulty ? req.body.difficulty : Course.difficulty;
+                    Course.index = req.body.index ? req.body.index : Course.index;
                     Course.description = req.body.description ? req.body.description : Course.description;
                     Course.lessons = req.body.lessons ? req.body.lessons : Course.lessons;
 
