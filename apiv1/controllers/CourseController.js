@@ -1,5 +1,7 @@
 let CourseModel = require('../models/CourseModel.js');
+let LessonSaveModel = require('../models/LessonModel.js');
 let verify = require('../authorization/verifyAuth.js');
+let { verifyGoogleToken } = require('../authorization/verifyAuth');
 
 /**
  * CourseController.js
@@ -117,7 +119,7 @@ module.exports = {
     /**
     * CourseController.create()
     */
-    create: function (req, res) {
+    create: async function (req, res) {
         let newCourse = new CourseModel({
             name: req.body.name,
             shortname: req.body.shortname,
@@ -126,39 +128,72 @@ module.exports = {
             description: req.body.description,
             lessons: req.body.lessons
         });
+
         let token = req.headers['x-access-token'];
 
+        let uid = await verifyGoogleToken(req.headers['x-access-token']);
+        if (!uid) {
+            return res.status(401).json({
+                message: "Invalid token received",
+                error: "Unauthorized"
+            });
+        }
+
         verify.isAdmin(token).then(function (answer) {
-            if (!answer) {
-                res.status(401).send('Error 401: Not authorized');
-            }
-            else {
-                CourseModel.findOne({ shortname: req.body.shortname }, function (err, Course) {
+            // if (!answer) {
+            //     return res.status(401).send('Error 401: Not authorized');
+            // }
+
+            CourseModel.findOne({ shortname: req.body.shortname }, function (err, Course) {
+                if (err) {
+                    return res.status(500).json({
+                        message: 'Error when creating course.',
+                        error: err
+                    });
+                }
+                if (Course != null) {
+                    return res.status(409).json({
+                        message: 'A course with this shortname already exists',
+                    });
+                }
+
+                // Save the new course
+                Course = newCourse;
+                Course.save(function (err, savedCourse) {
                     if (err) {
                         return res.status(500).json({
-                            message: 'Error when creating course.',
+                            message: 'Error when creating course',
                             error: err
                         });
                     }
-                    if (Course != null) {
-                        return res.status(409).json({
-                            message: 'A course with this shortname already exists',
+
+                    // Create and save lessons
+                    const lessonSaves = req.body.lessons.map(lesson => {
+                        return new LessonSaveModel({
+                            name: lesson.name,
+                            prompt: lesson.prompt,
+                            code: lesson.code,
+                            settings: lesson.settings,
+                            user: uid,
                         });
-                    }
-                    else {
-                        Course = newCourse;
-                        Course.save(function (err, Course) {
-                            if (err) {
-                                return res.status(500).json({
-                                    message: 'Error when creating course',
-                                    error: err
-                                });
-                            }
-                            return res.status(201).json(Course);
+                    });
+
+                    LessonSaveModel.insertMany(lessonSaves, function (err, savedLessons) {
+                        if (err) {
+                            return res.status(500).json({
+                                message: 'Error when saving lessons',
+                                error: err
+                            });
+                        }
+
+                        // Respond with the saved course and lessons
+                        return res.status(201).json({
+                            course: savedCourse,
+                            lessons: savedLessons
                         });
-                    }
+                    });
                 });
-            }
+            });
         });
     },
 
